@@ -1,4 +1,4 @@
-const VERSION = "newsstand-v3";
+const VERSION = "newsstand-v4";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {

@@ -153,20 +153,27 @@ const SOURCES=[
   {id:"hn",name:"Hacker News",cat:"Tech",url:"https://hnrss.org/frontpage"},
   {id:"nprsci",name:"NPR Science",cat:"Science",url:"https://feeds.npr.org/1007/rss.xml"},
   {id:"bbcsci",name:"BBC Science",cat:"Science",url:"https://feeds.bbci.co.uk/news/science_and_environment/rss.xml"},
-  {id:"bbcsport",name:"BBC Sport",cat:"Sports",url:"https://feeds.bbci.co.uk/sport/rss.xml"},
-  {id:"espn",name:"ESPN",cat:"Sports",url:"https://www.espn.com/espn/rss/news"}
+  {id:"ign",name:"IGN",cat:"Games",url:"https://feeds.feedburner.com/ign/all"},
+  {id:"polygon",name:"Polygon",cat:"Games",url:"https://www.polygon.com/rss/index.xml"},
+  {id:"gamespot",name:"GameSpot",cat:"Games",url:"https://www.gamespot.com/feeds/news/"},
+  {id:"eurogamer",name:"Eurogamer",cat:"Games",url:"https://www.eurogamer.net/feed"},
+  {id:"pcgamer",name:"PC Gamer",cat:"Games",url:"https://www.pcgamer.com/rss/"}
 ];
-const CATS=["Top","World","Business","Tech","Science","Sports","Saved"];
+const CATS=["Top","World","Business","Tech","Science","Games","Saved"];
 const $=s=>document.querySelector(s);
 const store={
   get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
 };
 let enabled=new Set(store.get("enabled",SOURCES.map(s=>s.id)));
+{const known=new Set(store.get("known",[]));
+ SOURCES.forEach(s=>{if(!known.has(s.id)){enabled.add(s.id);known.add(s.id)}});
+ store.set("known",[...known]);store.set("enabled",[...enabled])}
 let saved=store.get("saved",{});   // link -> article
 let readSet=new Set(store.get("read",[]));
 let cache=store.get("cache",{});   // id -> {t, items}
 let cat=store.get("cat","Top");
+if(!CATS.includes(cat))cat="Top";
 let current=null;
 
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -285,7 +292,7 @@ function render(state){
     const loading=cat!=="Saved"&&!Object.keys(cache).length&&state!=="offline";
     list.innerHTML=loading?'<div class="skel"></div>'.repeat(5):
       `<div class="${state==="offline"?"err":"empty"}">${cat==="Saved"?"Nothing saved yet. Open a story and tap the bookmark.":
-      state==="offline"?"Couldn't load news"+(lastErr?" ("+esc(lastErr)+")":"")+". Check your connection and pull down to retry. [v3]":"No stories yet."}</div>`;
+      state==="offline"?"Couldn't load news"+(lastErr?" ("+esc(lastErr)+")":"")+". Check your connection and pull down to retry. [v4]":"No stories yet."}</div>`;
     return;
   }
   const banner=state==="offline"?'<div class="banner">Offline — showing your last saved headlines.</div>':"";
