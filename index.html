@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Newsstand</title>
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111214" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Newsstand">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+:root{
+  --bg:#f6f5f1; --card:#fff; --ink:#18181b; --muted:#6b6b73; --line:#e4e2db; --accent:#c2410c;
+  --sat:env(safe-area-inset-top); --sab:env(safe-area-inset-bottom);
+  --sal:env(safe-area-inset-left); --sar:env(safe-area-inset-right);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#111214; --card:#1b1c1f; --ink:#f2f2f0; --muted:#9a9aa3; --line:#2a2b2f; --accent:#fb923c}
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+  font:16px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  -webkit-text-size-adjust:100%;overscroll-behavior-y:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+#app{display:flex;flex-direction:column;height:100%}
+
+header{padding:calc(var(--sat) + 10px) calc(var(--sar) + 16px) 0 calc(var(--sal) + 16px);
+  background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:saturate(180%) blur(18px);
+  -webkit-backdrop-filter:saturate(180%) blur(18px);border-bottom:1px solid var(--line);z-index:5}
+.top{display:flex;align-items:baseline;justify-content:space-between}
+h1{font:700 28px/1.1 "New York",Georgia,serif;margin:0;letter-spacing:-.02em}
+.sub{color:var(--muted);font-size:12px}
+.iconbtn{width:44px;height:44px;display:grid;place-items:center;border-radius:12px;margin-right:-10px}
+.iconbtn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+nav{display:flex;gap:6px;overflow-x:auto;padding:6px 0 10px;scrollbar-width:none;
+  margin:0 calc(-1*(var(--sar) + 16px)) 0 calc(-1*(var(--sal) + 16px));
+  padding-left:calc(var(--sal) + 16px);padding-right:calc(var(--sar) + 16px)}
+nav::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);
+  font-size:14px;font-weight:500;min-height:36px}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;
+  padding:12px calc(var(--sar) + 16px) calc(var(--sab) + 24px) calc(var(--sal) + 16px);position:relative}
+#ptr{position:absolute;left:0;right:0;top:0;text-align:center;color:var(--muted);font-size:13px;
+  height:0;overflow:hidden;transition:height .2s}
+.list{display:grid;gap:12px;max-width:760px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;
+  display:block;width:100%;text-align:left}
+.card:active{transform:scale(.99);transition:transform .1s}
+.card img{width:100%;height:180px;object-fit:cover;display:block;background:var(--line)}
+.card .body{padding:12px 14px 14px}
+.meta{display:flex;gap:6px;align-items:center;color:var(--muted);font-size:12px;margin-bottom:4px}
+.meta b{color:var(--accent);font-weight:600}
+.card h2{margin:0;font:600 18px/1.28 "New York",Georgia,serif;letter-spacing:-.005em}
+.card.read h2{color:var(--muted);font-weight:500}
+.card p{margin:6px 0 0;color:var(--muted);font-size:14px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.empty,.err{text-align:center;color:var(--muted);padding:48px 16px}
+.skel{height:110px;border-radius:16px;background:linear-gradient(90deg,var(--card),var(--line),var(--card));
+  background-size:200% 100%;animation:sh 1.2s infinite}
+@keyframes sh{to{background-position:-200% 0}}
+.banner{max-width:760px;margin:0 auto 10px;font-size:13px;color:var(--muted);text-align:center}
+
+/* reader sheet */
+#reader{position:fixed;inset:0;background:var(--bg);z-index:20;display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.2,.8,.2,1);visibility:hidden}
+#reader.open{transform:none;visibility:visible}
+.rbar{display:flex;align-items:center;justify-content:space-between;
+  padding:calc(var(--sat) + 4px) calc(var(--sar) + 8px) 4px calc(var(--sal) + 8px);
+  border-bottom:1px solid var(--line);background:var(--bg)}
+.rbar .iconbtn{margin:0}
+.rbar .grp{display:flex}
+#rbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:20px calc(var(--sar) + 20px) calc(var(--sab) + 40px) calc(var(--sal) + 20px)}
+article{max-width:680px;margin:0 auto}
+article h1{font-size:28px;line-height:1.2;margin:6px 0 10px}
+article .byline{color:var(--muted);font-size:13px;margin-bottom:16px}
+article img{max-width:100%;height:auto;border-radius:12px}
+article .content{font:18px/1.6 "New York",Georgia,serif;overflow-wrap:anywhere}
+article .content a{color:var(--accent)}
+article .content iframe,article .content video{max-width:100%}
+.cta{display:block;text-align:center;margin:28px auto 0;max-width:680px;padding:14px;border-radius:14px;
+  background:var(--ink);color:var(--bg);font-weight:600;text-decoration:none}
+
+/* settings */
+#sheet{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.4);display:none;align-items:flex-end}
+#sheet.open{display:flex}
+.panel{background:var(--bg);width:100%;max-height:85%;overflow-y:auto;border-radius:20px 20px 0 0;
+  padding:18px calc(var(--sar) + 18px) calc(var(--sab) + 20px) calc(var(--sal) + 18px);max-width:760px;margin:0 auto}
+.panel h3{margin:0 0 4px;font-size:20px}
+.row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);min-height:48px}
+.row label{display:flex;align-items:center;gap:10px;flex:1}
+input[type=checkbox]{width:22px;height:22px;accent-color:var(--accent)}
+.hint{color:var(--muted);font-size:13px;margin:6px 0 12px}
+.install{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:14px;margin:10px 0}
+.done{margin-top:14px;width:100%;padding:14px;border-radius:14px;background:var(--ink);color:var(--bg);font-weight:600}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="top">
+      <div><h1>Newsstand</h1><div class="sub" id="status">&nbsp;</div></div>
+      <div style="display:flex">
+        <button class="iconbtn" id="refresh" aria-label="Refresh"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+        <button class="iconbtn" id="gear" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+      </div>
+    </div>
+    <nav id="tabs" aria-label="Sections"></nav>
+  </header>
+  <main id="main"><div id="ptr">Pull to refresh</div><div class="list" id="list"></div></main>
+</div>
+
+<section id="reader" aria-hidden="true">
+  <div class="rbar">
+    <button class="iconbtn" id="back" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="grp">
+      <button class="iconbtn" id="save" aria-label="Save"><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4-6 4z"/></svg></button>
+      <button class="iconbtn" id="share" aria-label="Share"><svg viewBox="0 0 24 24"><path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v8h14v-8"/></svg></button>
+    </div>
+  </div>
+  <div id="rbody"></div>
+</section>
+
+<div id="sheet"><div class="panel" role="dialog" aria-label="Settings">
+  <h3>Sources</h3>
+  <p class="hint">Choose which feeds appear in your sections.</p>
+  <div id="srclist"></div>
+  <h3 style="margin-top:20px">Add to Home Screen</h3>
+  <div class="install" id="installbox">On iPhone or iPad: open this page in <b>Safari</b>, tap the Share button, then <b>Add to Home Screen</b>. On Android: use the browser menu → <b>Install app</b>.</div>
+  <button class="done" id="done">Done</button>
+</div></div>
+
+<script>
+"use strict";
+const SOURCES=[
+  {id:"bbc",name:"BBC News",cat:"World",url:"https://feeds.bbci.co.uk/news/world/rss.xml"},
+  {id:"npr",name:"NPR",cat:"Top",url:"https://feeds.npr.org/1001/rss.xml"},
+  {id:"guardian",name:"The Guardian",cat:"World",url:"https://www.theguardian.com/world/rss"},
+  {id:"aljaz",name:"Al Jazeera",cat:"World",url:"https://www.aljazeera.com/xml/rss/all.xml"},
+  {id:"nprbiz",name:"NPR Business",cat:"Business",url:"https://feeds.npr.org/1006/rss.xml"},
+  {id:"bbcbiz",name:"BBC Business",cat:"Business",url:"https://feeds.bbci.co.uk/news/business/rss.xml"},
+  {id:"verge",name:"The Verge",cat:"Tech",url:"https://www.theverge.com/rss/index.xml"},
+  {id:"ars",name:"Ars Technica",cat:"Tech",url:"https://feeds.arstechnica.com/arstechnica/index"},
+  {id:"hn",name:"Hacker News",cat:"Tech",url:"https://hnrss.org/frontpage"},
+  {id:"nprsci",name:"NPR Science",cat:"Science",url:"https://feeds.npr.org/1007/rss.xml"},
+  {id:"bbcsci",name:"BBC Science",cat:"Science",url:"https://feeds.bbci.co.uk/news/science_and_environment/rss.xml"},
+  {id:"bbcsport",name:"BBC Sport",cat:"Sports",url:"https://feeds.bbci.co.uk/sport/rss.xml"},
+  {id:"espn",name:"ESPN",cat:"Sports",url:"https://www.espn.com/espn/rss/news"}
+];
+const CATS=["Top","World","Business","Tech","Science","Sports","Saved"];
+const $=s=>document.querySelector(s);
+const store={
+  get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch{return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}
+};
+let enabled=new Set(store.get("enabled",SOURCES.map(s=>s.id)));
+let saved=store.get("saved",{});   // link -> article
+let readSet=new Set(store.get("read",[]));
+let cache=store.get("cache",{});   // id -> {t, items}
+let cat=store.get("cat","Top");
+let current=null;
+
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const strip=h=>{const d=document.createElement("div");d.innerHTML=h||"";return (d.textContent||"").replace(/\s+/g," ").trim()};
+function ago(t){const s=(Date.now()-t)/1000;if(!isFinite(s))return"";
+  if(s<3600)return Math.max(1,Math.round(s/60))+"m";if(s<86400)return Math.round(s/3600)+"h";return Math.round(s/86400)+"d"}
+function sanitize(html,base){
+  const doc=new DOMParser().parseFromString(html||"","text/html");
+  doc.querySelectorAll("script,style,iframe,object,embed,form,link,meta").forEach(n=>n.remove());
+  doc.querySelectorAll("*").forEach(n=>{[...n.attributes].forEach(a=>{
+    if(/^on/i.test(a.name)||/^\s*javascript:/i.test(a.value))n.removeAttribute(a.name)});
+    if(n.tagName==="A"){n.target="_blank";n.rel="noopener noreferrer"}
+    if(n.tagName==="IMG"){n.loading="lazy";n.removeAttribute("width");n.removeAttribute("height")}});
+  return doc.body.innerHTML;
+}
+
+/* ---------- data ---------- */
+async function fetchFeed(src){
+  const api="https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(src.url);
+  const r=await fetch(api,{cache:"no-store"});
+  if(!r.ok)throw new Error(r.status);
+  const j=await r.json();
+  if(j.status!=="ok")throw new Error(j.message||"feed error");
+  const items=(j.items||[]).map(i=>({
+    title:strip(i.title),link:i.link,
+    time:Date.parse((i.pubDate||"").replace(" ","T")+"Z")||Date.now(),
+    image:i.thumbnail||(i.enclosure&&i.enclosure.link&&/image/.test(i.enclosure.type||"image")?i.enclosure.link:"")||
+      ((i.content||i.description||"").match(/<img[^>]+src=["']([^"']+)/i)||[])[1]||"",
+    summary:strip(i.description).slice(0,220),
+    html:i.content||i.description||"",
+    author:i.author||"",source:src.name,cat:src.cat
+  }));
+  cache[src.id]={t:Date.now(),items};
+  return items;
+}
+async function refresh(force){
+  const btn=$("#refresh");btn.classList.add("spin");
+  const targets=SOURCES.filter(s=>enabled.has(s.id)&&(cat==="Saved"?false:(cat==="Top"||s.cat===cat||true)));
+  const stale=targets.filter(s=>force||!cache[s.id]||Date.now()-cache[s.id].t>10*60*1000);
+  let fails=0;
+  await Promise.all(stale.map(s=>fetchFeed(s).catch(()=>{fails++})));
+  store.set("cache",cache);
+  btn.classList.remove("spin");
+  render(fails&&fails===stale.length&&stale.length?"offline":"");
+}
+
+/* ---------- ui ---------- */
+function allItems(){
+  if(cat==="Saved")return Object.values(saved).sort((a,b)=>b.savedAt-a.savedAt);
+  const out=[];
+  SOURCES.forEach(s=>{if(!enabled.has(s.id))return;
+    if(cat!=="Top"&&s.cat!==cat)return;
+    (cache[s.id]?.items||[]).slice(0,cat==="Top"?6:12).forEach(i=>out.push(i))});
+  const seen=new Set();
+  return out.filter(i=>!seen.has(i.link)&&seen.add(i.link)).sort((a,b)=>b.time-a.time);
+}
+function renderTabs(){
+  $("#tabs").innerHTML=CATS.map(c=>`<button class="chip" data-c="${c}" aria-pressed="${c===cat}">${c}${c==="Saved"?" ("+Object.keys(saved).length+")":""}</button>`).join("");
+}
+function render(state){
+  renderTabs();
+  const items=allItems(),list=$("#list");
+  const times=Object.values(cache).map(c=>c.t);
+  $("#status").textContent=times.length?"Updated "+ago(Math.max(...times))+" ago":"";
+  if(!items.length){
+    const loading=cat!=="Saved"&&!Object.keys(cache).length&&state!=="offline";
+    list.innerHTML=loading?'<div class="skel"></div>'.repeat(5):
+      `<div class="${state==="offline"?"err":"empty"}">${cat==="Saved"?"Nothing saved yet. Open a story and tap the bookmark.":
+      state==="offline"?"Couldn't load news. Check your connection and pull down to retry.":"No stories yet."}</div>`;
+    return;
+  }
+  const banner=state==="offline"?'<div class="banner">Offline — showing your last saved headlines.</div>':"";
+  list.innerHTML=banner+items.map((a,i)=>`
+    <button class="card ${readSet.has(a.link)?"read":""}" data-i="${i}">
+      ${a.image?`<img src="${esc(a.image)}" alt="" loading="lazy" onerror="this.remove()">`:""}
+      <div class="body">
+        <div class="meta"><b>${esc(a.source)}</b><span>·</span><span>${ago(a.time)}</span></div>
+        <h2>${esc(a.title)}</h2>
+        ${a.summary?`<p>${esc(a.summary)}</p>`:""}
+      </div></button>`).join("");
+  list._items=items;
+}
+
+/* ---------- reader with real back-button/gesture support ---------- */
+function openReader(a,push=true){
+  current=a;readSet.add(a.link);store.set("read",[...readSet].slice(-500));
+  const d=new Date(a.time);
+  $("#rbody").innerHTML=`<article>
+    <div class="meta"><b>${esc(a.source)}</b></div>
+    <h1>${esc(a.title)}</h1>
+    <div class="byline">${esc(a.author?a.author+" · ":"")}${isNaN(d)?"":d.toLocaleString([], {dateStyle:"medium",timeStyle:"short"})}</div>
+    ${a.image?`<img src="${esc(a.image)}" alt="" onerror="this.remove()">`:""}
+    <div class="content">${sanitize(a.html,a.link)||`<p>${esc(a.summary)}</p>`}</div>
+    <a class="cta" href="${esc(a.link)}" target="_blank" rel="noopener noreferrer">Read full story at ${esc(a.source)}</a>
+  </article>`;
+  $("#rbody").scrollTop=0;
+  updateSaveBtn();
+  $("#reader").classList.add("open");$("#reader").setAttribute("aria-hidden","false");
+  if(push)history.pushState({r:1},"");
+}
+function closeReader(fromPop){
+  if(!$("#reader").classList.contains("open"))return;
+  $("#reader").classList.remove("open");$("#reader").setAttribute("aria-hidden","true");
+  current=null;
+  if(!fromPop&&history.state&&history.state.r)history.back();
+  render();
+}
+function updateSaveBtn(){
+  const on=current&&saved[current.link];
+  $("#save svg").style.fill=on?"currentColor":"none";
+}
+window.addEventListener("popstate",()=>{
+  if($("#sheet").classList.contains("open"))closeSheet(true);
+  else closeReader(true);
+});
+
+/* ---------- settings ---------- */
+function openSheet(){
+  $("#srclist").innerHTML=SOURCES.map(s=>`<div class="row"><label><input type="checkbox" data-s="${s.id}" ${enabled.has(s.id)?"checked":""}><span>${esc(s.name)} <span class="sub">· ${s.cat}</span></span></label></div>`).join("");
+  $("#sheet").classList.add("open");history.pushState({s:1},"");
+}
+function closeSheet(fromPop){
+  $("#sheet").classList.remove("open");
+  if(!fromPop&&history.state&&history.state.s)history.back();
+  store.set("enabled",[...enabled]);refresh(false);
+}
+
+/* ---------- events ---------- */
+$("#tabs").addEventListener("click",e=>{const b=e.target.closest(".chip");if(!b)return;
+  cat=b.dataset.c;store.set("cat",cat);render();$("#main").scrollTop=0;if(cat!=="Saved")refresh(false)});
+$("#list").addEventListener("click",e=>{const c=e.target.closest(".card");if(!c)return;
+  const a=$("#list")._items[+c.dataset.i];if(a)openReader(a)});
+$("#back").onclick=()=>closeReader(false);
+$("#refresh").onclick=()=>refresh(true);
+$("#gear").onclick=openSheet;
+$("#done").onclick=()=>closeSheet(false);
+$("#sheet").addEventListener("click",e=>{if(e.target.id==="sheet")closeSheet(false)});
+$("#srclist").addEventListener("change",e=>{const id=e.target.dataset.s;if(!id)return;
+  e.target.checked?enabled.add(id):enabled.delete(id)});
+$("#save").onclick=()=>{if(!current)return;
+  if(saved[current.link])delete saved[current.link];else saved[current.link]={...current,savedAt:Date.now()};
+  store.set("saved",saved);updateSaveBtn();renderTabs()};
+$("#share").onclick=async()=>{if(!current)return;
+  try{if(navigator.share)await navigator.share({title:current.title,url:current.link});
+      else{await navigator.clipboard.writeText(current.link);$("#status").textContent="Link copied"}}catch{}};
+
+// swipe from left edge to go back in reader (in addition to iOS/Android native back)
+let sx=0,sy=0;
+$("#reader").addEventListener("touchstart",e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+$("#reader").addEventListener("touchend",e=>{const t=e.changedTouches[0];
+  if(sx<30&&t.clientX-sx>90&&Math.abs(t.clientY-sy)<60)closeReader(false)},{passive:true});
+
+// pull to refresh
+(function(){const m=$("#main"),p=$("#ptr");let y0=0,pull=0,on=false;
+  m.addEventListener("touchstart",e=>{if(m.scrollTop<=0){y0=e.touches[0].clientY;on=true}},{passive:true});
+  m.addEventListener("touchmove",e=>{if(!on)return;pull=Math.max(0,e.touches[0].clientY-y0);
+    if(pull>0&&m.scrollTop<=0){p.style.transition="none";p.style.height=Math.min(pull/2,60)+"px";
+      p.textContent=pull>110?"Release to refresh":"Pull to refresh"}},{passive:true});
+  m.addEventListener("touchend",()=>{if(!on)return;on=false;p.style.transition="";p.style.height="0";
+    if(pull>110)refresh(true);pull=0},{passive:true});
+})();
+
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)refresh(false)});
+if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+if(navigator.standalone||matchMedia("(display-mode: standalone)").matches)$("#installbox").style.display="none";
+
+render();refresh(false);
+</script>
+</body>
+</html>
