@@ -285,7 +285,7 @@ function render(state){
     const loading=cat!=="Saved"&&!Object.keys(cache).length&&state!=="offline";
     list.innerHTML=loading?'<div class="skel"></div>'.repeat(5):
       `<div class="${state==="offline"?"err":"empty"}">${cat==="Saved"?"Nothing saved yet. Open a story and tap the bookmark.":
-      state==="offline"?"Couldn't load news"+(lastErr?" ("+esc(lastErr)+")":"")+". Check your connection and pull down to retry.":"No stories yet."}</div>`;
+      state==="offline"?"Couldn't load news"+(lastErr?" ("+esc(lastErr)+")":"")+". Check your connection and pull down to retry. [v3]":"No stories yet."}</div>`;
     return;
   }
   const banner=state==="offline"?'<div class="banner">Offline — showing your last saved headlines.</div>':"";

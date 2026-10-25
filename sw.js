@@ -1,4 +1,4 @@
-const VERSION = "newsstand-v2";
+const VERSION = "newsstand-v3";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
@@ -18,16 +18,13 @@ self.addEventListener("fetch", e => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
 
-  // App shell: stale-while-revalidate (same origin only)
+  // App shell: network-first so updates show immediately, cache as offline fallback
   if (url.origin === location.origin) {
     e.respondWith(
-      caches.match(req, { ignoreSearch: true }).then(hit => {
-        const net = fetch(req).then(res => {
-          if (res.ok) caches.open(VERSION).then(c => c.put(req, res.clone()));
-          return res;
-        }).catch(() => hit || caches.match("./index.html"));
-        return hit || net;
-      })
+      fetch(req, { cache: "no-store" }).then(res => {
+        if (res.ok) caches.open(VERSION).then(c => c.put(req, res.clone()));
+        return res;
+      }).catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || caches.match("./index.html")))
     );
     return;
   }
