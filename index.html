@@ -184,23 +184,73 @@ function sanitize(html,base){
 }
 
 /* ---------- data ---------- */
-async function fetchFeed(src){
-  const api="https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(src.url);
-  const r=await fetch(api,{cache:"no-store"});
-  if(!r.ok)throw new Error(r.status);
+let lastErr="";
+function withTimeout(url,ms){
+  const c=new AbortController();const t=setTimeout(()=>c.abort(),ms);
+  return fetch(url,{cache:"no-store",signal:c.signal}).finally(()=>clearTimeout(t));
+}
+function kid(n,names){return [...n.children].find(c=>names.includes(c.nodeName)||names.includes(c.localName))}
+function parseXML(xml,src){
+  const doc=new DOMParser().parseFromString(xml,"text/xml");
+  if(doc.querySelector("parsererror"))throw new Error("bad XML");
+  const nodes=[...doc.querySelectorAll("item,entry")];
+  if(!nodes.length)throw new Error("no items in feed");
+  return nodes.map(n=>{
+    const t=names=>{const e=kid(n,names);return e?e.textContent.trim():""};
+    let link=t(["link"]);
+    const atom=[...n.children].find(c=>c.localName==="link"&&c.getAttribute("href"));
+    if(atom)link=atom.getAttribute("href");
+    const html=t(["content:encoded","content"])||t(["description","summary"]);
+    const desc=t(["description","summary"])||html;
+    let image="";
+    const m=[...n.children].find(c=>/^(media:thumbnail|media:content|thumbnail)$/.test(c.nodeName)&&c.getAttribute("url"));
+    if(m)image=m.getAttribute("url");
+    const enc=[...n.children].find(c=>c.nodeName==="enclosure"&&/image/.test(c.getAttribute("type")||""));
+    if(!image&&enc)image=enc.getAttribute("url");
+    if(!image)image=((html||"").match(/<img[^>]+src=["']([^"']+)/i)||[])[1]||"";
+    return {title:strip(t(["title"])),link,
+      time:Date.parse(t(["pubDate","published","updated","dc:date"]))||Date.now(),
+      image,summary:strip(desc).slice(0,220),html,
+      author:t(["dc:creator","author","name"]),source:src.name,cat:src.cat};
+  }).filter(i=>i.title&&i.link);
+}
+async function viaRss2json(src){
+  const r=await withTimeout("https://api.rss2json.com/v1/api.json?rss_url="+encodeURIComponent(src.url),12000);
+  if(!r.ok)throw new Error("rss2json "+r.status);
   const j=await r.json();
-  if(j.status!=="ok")throw new Error(j.message||"feed error");
-  const items=(j.items||[]).map(i=>({
+  if(j.status!=="ok")throw new Error("rss2json: "+(j.message||"error"));
+  return (j.items||[]).map(i=>({
     title:strip(i.title),link:i.link,
     time:Date.parse((i.pubDate||"").replace(" ","T")+"Z")||Date.now(),
     image:i.thumbnail||(i.enclosure&&i.enclosure.link&&/image/.test(i.enclosure.type||"image")?i.enclosure.link:"")||
       ((i.content||i.description||"").match(/<img[^>]+src=["']([^"']+)/i)||[])[1]||"",
-    summary:strip(i.description).slice(0,220),
-    html:i.content||i.description||"",
-    author:i.author||"",source:src.name,cat:src.cat
-  }));
-  cache[src.id]={t:Date.now(),items};
-  return items;
+    summary:strip(i.description).slice(0,220),html:i.content||i.description||"",
+    author:i.author||"",source:src.name,cat:src.cat}));
+}
+const PROXIES=[
+  u=>"https://api.allorigins.win/raw?url="+encodeURIComponent(u),
+  u=>"https://corsproxy.io/?"+encodeURIComponent(u),
+  u=>"https://api.codetabs.com/v1/proxy?quest="+encodeURIComponent(u)
+];
+function viaProxy(mk){
+  return async src=>{
+    const r=await withTimeout(mk(src.url),12000);
+    if(!r.ok)throw new Error("proxy "+r.status);
+    return parseXML(await r.text(),src);
+  };
+}
+async function fetchFeed(src){
+  const routes=[viaRss2json,...PROXIES.map(viaProxy)];
+  const errs=[];
+  for(const route of routes){
+    try{
+      const items=await route(src);
+      if(items&&items.length){cache[src.id]={t:Date.now(),items};return items}
+      errs.push("empty");
+    }catch(e){errs.push(e.name==="AbortError"?"timeout":(e.message||"failed"))}
+  }
+  lastErr=errs[errs.length-1]||"failed";
+  throw new Error(errs.join("; "));
 }
 async function refresh(force){
   const btn=$("#refresh");btn.classList.add("spin");
@@ -235,7 +285,7 @@ function render(state){
     const loading=cat!=="Saved"&&!Object.keys(cache).length&&state!=="offline";
     list.innerHTML=loading?'<div class="skel"></div>'.repeat(5):
       `<div class="${state==="offline"?"err":"empty"}">${cat==="Saved"?"Nothing saved yet. Open a story and tap the bookmark.":
-      state==="offline"?"Couldn't load news. Check your connection and pull down to retry.":"No stories yet."}</div>`;
+      state==="offline"?"Couldn't load news"+(lastErr?" ("+esc(lastErr)+")":"")+". Check your connection and pull down to retry.":"No stories yet."}</div>`;
     return;
   }
   const banner=state==="offline"?'<div class="banner">Offline — showing your last saved headlines.</div>':"";
